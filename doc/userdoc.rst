@@ -91,13 +91,13 @@ Tutorial steps
     ros2 topic pub --rate 30 /diffbot_base_controller/cmd_vel geometry_msgs/msg/TwistStamped "
     twist:
       linear:
-        x: 0.7
+        x: -5.0
         y: 0.0
         z: 0.0
       angular:
         x: 0.0
         y: 0.0
-        z: 1.0"
+        z: 0.0"
 
    You should now see an orange box circling in *RViz*.
    Also, you should see changing states in the terminal where launch file is started.

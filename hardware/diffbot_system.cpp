@@ -44,12 +44,24 @@ hardware_interface::CallbackReturn DiffBotSystemHardware::on_init(
   cfg_.baud_rate = std::stoi(info_.hardware_parameters["baud_rate"]);
   cfg_.timeout_ms = std::stoi(info_.hardware_parameters["timeout_ms"]);
   cfg_.enc_counts_per_rev = std::stoi(info_.hardware_parameters["enc_counts_per_rev"]);
+
+
+  RCLCPP_INFO(
+    rclcpp::get_logger("DiffBotSystemHardware"), "Configuring hardware with %s %s %f %s %d %d %d",
+    cfg_.left_wheel_name.c_str(), cfg_.right_wheel_name.c_str(), cfg_.loop_rate, cfg_.device.c_str(),
+    cfg_.baud_rate, cfg_.timeout_ms, cfg_.enc_counts_per_rev);
+
   if (info_.hardware_parameters.count("pid_p") > 0)
   {
     cfg_.pid_p = std::stoi(info_.hardware_parameters["pid_p"]);
     cfg_.pid_d = std::stoi(info_.hardware_parameters["pid_d"]);
     cfg_.pid_i = std::stoi(info_.hardware_parameters["pid_i"]);
     cfg_.pid_o = std::stoi(info_.hardware_parameters["pid_o"]);
+
+    RCLCPP_INFO(
+      rclcpp::get_logger("DiffBotSystemHardware"), "PID values supplied: %d %d %d %d", cfg_.pid_p,
+      cfg_.pid_d, cfg_.pid_i, cfg_.pid_o);
+      
   }
   else
   {
