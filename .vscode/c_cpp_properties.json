@@ -8,7 +8,7 @@
       "includePath": [
         "/home/carlios/control_ws/install/ros2_control_demo_example_2/include/**",
         "/home/carlios/dev_ws/install/sjtu_drone_description/include/**",
-        "/home/carlios/dev_ws/install/diffdrive_arduino/include/**",
+        "/home/carlios/dev_ws/install/ros2_control_demo_example_2/include/**",
         "/opt/ros/humble/include/**",
         "/usr/include/**"
       ],
