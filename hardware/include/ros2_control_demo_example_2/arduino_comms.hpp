@@ -110,6 +110,42 @@ public:
     send_msg(ss.str());
   }
 
+void read_imu_values(double &accel_x, double &accel_y, double &accel_z, double &gyro_x, double &gyro_y, double &gyro_z) {
+    std::string response = send_msg("i\r");
+
+    std::string delimiter = " ";
+    size_t start = 0;
+    size_t end = response.find(delimiter);
+    int index = 0;
+    double values[6];
+
+    // Parse the response and store values in the array
+    while (end != std::string::npos && index < 6) {
+      // std::cout << response.substr(start, end - start) << std::endl;
+        values[index] = std::atof(response.substr(start, end - start).c_str());
+        start = end + delimiter.length();
+        end = response.find(delimiter, start);
+        index++;
+    }
+
+    // Handle the last value
+    if (index < 6) {
+        values[index] = std::atof(response.substr(start).c_str());
+    }
+
+    // Assign parsed values to the parameters
+    accel_x = values[0];
+    accel_y = values[1];
+    accel_z = values[2];
+    gyro_x = values[3];
+    gyro_y = values[4];
+    gyro_z = values[5];
+}
+
+void calibrate_imu() {
+    send_msg("j\r");
+}
+
 private:
     LibSerial::SerialPort serial_conn_;
     int timeout_ms_;

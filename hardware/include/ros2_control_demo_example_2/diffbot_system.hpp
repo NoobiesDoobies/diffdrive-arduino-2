@@ -29,9 +29,16 @@
 #include "rclcpp/time.hpp"
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 #include "rclcpp_lifecycle/state.hpp"
+#include "rclcpp/publisher.hpp"
+#include "rclcpp/service.hpp"
+#include "rclcpp/node.hpp"
+
+#include "std_srvs/srv/empty.hpp"
+#include "sensor_msgs/msg/imu.hpp"
 
 #include "ros2_control_demo_example_2/arduino_comms.hpp"
 #include "ros2_control_demo_example_2/wheel.hpp"
+#include "ros2_control_demo_example_2/imu.hpp"
 
 namespace ros2_control_demo_example_2
 {
@@ -43,6 +50,7 @@ struct Config
 {
   std::string left_wheel_name = "";
   std::string right_wheel_name = "";
+  std::string imu_name = "";
   float loop_rate = 0.0;
   std::string device = "";
   int baud_rate = 0;
@@ -81,6 +89,8 @@ public:
 
   hardware_interface::return_type write(
     const rclcpp::Time & time, const rclcpp::Duration & period) override;
+    
+  
 
 private:
   // Parameters for the DiffBot simulation
@@ -92,10 +102,16 @@ private:
   std::vector<double> hw_positions_;
   std::vector<double> hw_velocities_;
 
+  rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
+  rclcpp::Service<std_srvs::srv::Empty>::SharedPtr imu_calibrate_srv_;
+  rclcpp::Node::SharedPtr node_;
+
   ArduinoComms comms_;
   Config cfg_;
   Wheel wheel_l_;
   Wheel wheel_r_;
+  Imu imu_;
+  
 };
 
 }  // namespace ros2_control_demo_example_2

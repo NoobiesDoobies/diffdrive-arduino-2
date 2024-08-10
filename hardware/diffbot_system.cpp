@@ -44,7 +44,7 @@ hardware_interface::CallbackReturn DiffBotSystemHardware::on_init(
   cfg_.baud_rate = std::stoi(info_.hardware_parameters["baud_rate"]);
   cfg_.timeout_ms = std::stoi(info_.hardware_parameters["timeout_ms"]);
   cfg_.enc_counts_per_rev = std::stoi(info_.hardware_parameters["enc_counts_per_rev"]);
-
+  cfg_.imu_name = info_.hardware_parameters["imu_name"];
 
   RCLCPP_INFO(
     rclcpp::get_logger("DiffBotSystemHardware"), "Configuring hardware with %s %s %f %s %d %d %d",
@@ -71,6 +71,7 @@ hardware_interface::CallbackReturn DiffBotSystemHardware::on_init(
 
   wheel_l_.setup(cfg_.left_wheel_name, cfg_.enc_counts_per_rev);
   wheel_r_.setup(cfg_.right_wheel_name, cfg_.enc_counts_per_rev);
+  imu_.setup(cfg_.imu_name);
 
 
   // // BEGIN: This part here is for exemplary purposes - Please do not copy to your production code
@@ -132,8 +133,23 @@ hardware_interface::CallbackReturn DiffBotSystemHardware::on_init(
     }
   }
 
+  // Add random ID to prevent warnings about multiple publishers within the same node
+  rclcpp::NodeOptions options;
+  options.arguments({ "--ros-args", "-r", "__node:=topic_based_ros2_control_" + info_.name + "_sensor" });
+  node_ = rclcpp::Node::make_shared("_", options);
+
+  // Create publisher and service
+  std::string topic_name = info_.name;
+  std::transform(topic_name.begin(), topic_name.end(), topic_name.begin(), [](unsigned char c){ return std::tolower(c); });
+
+  imu_pub_ = node_->create_publisher<sensor_msgs::msg::Imu>(topic_name + std::string("/imu"), 1);
+  // imu_calibrate_srv_ = node_->create_service<std_srvs::srv::Empty>(
+  //   "imu_calibrate", std::bind(&DiffBotSystemHardware::imu_calibrate_callback, this, _1, _2));
+
+
   return hardware_interface::CallbackReturn::SUCCESS;
 }
+
 
 std::vector<hardware_interface::StateInterface> DiffBotSystemHardware::export_state_interfaces()
 {
@@ -147,6 +163,28 @@ std::vector<hardware_interface::StateInterface> DiffBotSystemHardware::export_st
     wheel_r_.name, hardware_interface::HW_IF_POSITION, &wheel_r_.pos));
   state_interfaces.emplace_back(hardware_interface::StateInterface(
     wheel_r_.name, hardware_interface::HW_IF_VELOCITY, &wheel_r_.vel));
+
+  // IMU
+  // state_interfaces.emplace_back(hardware_interface::StateInterface(
+  //   imu_.name, "orientation.x", &imu_.roll));
+  // state_interfaces.emplace_back(hardware_interface::StateInterface(
+  //   imu_.name, "orientation.y", &imu_.pitch));
+  // state_interfaces.emplace_back(hardware_interface::StateInterface(
+  //   imu_.name, "orientation.z", &imu_.yaw));
+  // state_interfaces.emplace_back(hardware_interface::StateInterface(
+  //   imu_.name, "angular_velocity.x", &imu_.gyro_x));
+  // state_interfaces.emplace_back(hardware_interface::StateInterface(
+  //   imu_.name, "angular_velocity.y", &imu_.gyro_y));
+  // state_interfaces.emplace_back(hardware_interface::StateInterface(
+  //   imu_.name, "angular_velocity.z", &imu_.gyro_z));
+  // state_interfaces.emplace_back(hardware_interface::StateInterface(
+  //   imu_.name, "linear_acceleration.x", &imu_.accel_x));
+  // state_interfaces.emplace_back(hardware_interface::StateInterface(
+  //   imu_.name, "linear_acceleration.y", &imu_.accel_y));
+  // state_interfaces.emplace_back(hardware_interface::StateInterface(
+  //   imu_.name, "linear_acceleration.z", &imu_.accel_z));
+  
+
 
   return state_interfaces;
 }
@@ -204,7 +242,10 @@ hardware_interface::CallbackReturn DiffBotSystemHardware::on_activate(
   {
     comms_.set_pid_values(cfg_.pid_p,cfg_.pid_d,cfg_.pid_i,cfg_.pid_o);
   }
+
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Successfully activated!");
+  RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Calibrating IMU...please wait...");
+  comms_.calibrate_imu();
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -227,8 +268,21 @@ hardware_interface::return_type DiffBotSystemHardware::read(
   }
 
   comms_.read_encoder_values(wheel_l_.enc, wheel_r_.enc);
+  comms_.read_imu_values(imu_.accel_x, imu_.accel_y, imu_.accel_z, imu_.gyro_x, imu_.gyro_y, imu_.gyro_z);
+
 
   double delta_seconds = period.seconds();
+
+  imu_.roll += imu_.gyro_x * delta_seconds;
+  imu_.pitch += imu_.gyro_y * delta_seconds;
+  imu_.yaw += imu_.gyro_z * delta_seconds;
+  
+  // std::cout<< "Roll: %f" << imu_.roll;
+  // std::cout<< "Pitch: %f" << imu_.pitch;
+  // std::cout<< "Yaw: %f" << imu_.yaw;
+
+  // RCLCPP_INFO( rclcpp::get_logger("DiffBotSystemHardware"), "%f %f %f %f %f %f %f %f %f", imu_.accel_x, imu_.accel_y, imu_.accel_z, imu_.gyro_x, imu_.gyro_y, imu_.gyro_z, imu_.roll, imu_.pitch, imu_.yaw);
+
 
   double pos_prev = wheel_l_.pos;
   wheel_l_.pos = wheel_l_.calc_enc_angle();
@@ -237,6 +291,10 @@ hardware_interface::return_type DiffBotSystemHardware::read(
   pos_prev = wheel_r_.pos;
   wheel_r_.pos = wheel_r_.calc_enc_angle();
   wheel_r_.vel = (wheel_r_.pos - pos_prev) / delta_seconds;
+
+  imu_pub_->publish(imu_.get_imu_msg());
+
+
 
   return hardware_interface::return_type::OK;
 }

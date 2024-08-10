@@ -10,10 +10,14 @@ set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 # find dependencies
 set(THIS_PACKAGE_INCLUDE_DEPENDS
+  imu_sensor_broadcaster
   hardware_interface
   pluginlib
   rclcpp
   rclcpp_lifecycle
+  sensor_msgs
+  std_srvs
+  std_msgs
 )
 
 # find dependencies
