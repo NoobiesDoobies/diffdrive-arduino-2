@@ -269,7 +269,7 @@ hardware_interface::CallbackReturn DiffBotSystemHardware::on_activate(
 
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Successfully activated!");
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Calibrating IMU...please wait...");
-  // comms_imu_.calibrate_imu();
+  comms_imu_.calibrate_imu();
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
