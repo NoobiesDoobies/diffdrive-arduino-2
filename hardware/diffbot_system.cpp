@@ -40,16 +40,19 @@ hardware_interface::CallbackReturn DiffBotSystemHardware::on_init(
   cfg_.left_wheel_name = info_.hardware_parameters["left_wheel_name"];
   cfg_.right_wheel_name = info_.hardware_parameters["right_wheel_name"];
   cfg_.loop_rate = std::stof(info_.hardware_parameters["loop_rate"]);
-  cfg_.device = info_.hardware_parameters["device"];
+  cfg_.device_motor = info_.hardware_parameters["device_motor_bridge"];
+  cfg_.device_imu = info_.hardware_parameters["device_imu_bridge"];
+
   cfg_.baud_rate = std::stoi(info_.hardware_parameters["baud_rate"]);
   cfg_.timeout_ms = std::stoi(info_.hardware_parameters["timeout_ms"]);
+  cfg_.imu_calib_timeout_ms = std::stoi(info_.hardware_parameters["imu_calib_timeout_ms"]);
   cfg_.enc_counts_per_rev = std::stoi(info_.hardware_parameters["enc_counts_per_rev"]);
   cfg_.imu_name = info_.hardware_parameters["imu_name"];
 
   RCLCPP_INFO(
-    rclcpp::get_logger("DiffBotSystemHardware"), "Configuring hardware with %s %s %f %s %d %d %d",
-    cfg_.left_wheel_name.c_str(), cfg_.right_wheel_name.c_str(), cfg_.loop_rate, cfg_.device.c_str(),
-    cfg_.baud_rate, cfg_.timeout_ms, cfg_.enc_counts_per_rev);
+    rclcpp::get_logger("DiffBotSystemHardware"), "Configuring hardware with %s %s %f %s %s %d %d %d %d",
+    cfg_.left_wheel_name.c_str(), cfg_.right_wheel_name.c_str(), cfg_.loop_rate, cfg_.device_motor.c_str(), cfg_.device_imu.c_str(),
+    cfg_.baud_rate, cfg_.timeout_ms, cfg_.imu_calib_timeout_ms, cfg_.enc_counts_per_rev);
 
   if (info_.hardware_parameters.count("pid_p") > 0)
   {
@@ -143,13 +146,22 @@ hardware_interface::CallbackReturn DiffBotSystemHardware::on_init(
   std::transform(topic_name.begin(), topic_name.end(), topic_name.begin(), [](unsigned char c){ return std::tolower(c); });
 
   imu_pub_ = node_->create_publisher<sensor_msgs::msg::Imu>(topic_name + std::string("/imu"), 1);
-  // imu_calibrate_srv_ = node_->create_service<std_srvs::srv::Empty>(
-  //   "imu_calibrate", std::bind(&DiffBotSystemHardware::imu_calibrate_callback, this, _1, _2));
+  imu_calibrate_srv_ = node_->create_service<std_srvs::srv::Empty>(
+    topic_name + std::string("/calibrate_imu"), std::bind(&DiffBotSystemHardware::imu_calibrate_callback, this, std::placeholders::_1, std::placeholders::_2));
 
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 
+void DiffBotSystemHardware::imu_calibrate_callback(
+  const std::shared_ptr<std_srvs::srv::Empty::Request> request,
+  std::shared_ptr<std_srvs::srv::Empty::Response> response)
+{
+  (void)request;
+  (void)response;
+  RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Calibrating IMU...please wait...");
+   comms_imu_.calibrate_imu();
+}
 
 std::vector<hardware_interface::StateInterface> DiffBotSystemHardware::export_state_interfaces()
 {
@@ -206,13 +218,21 @@ hardware_interface::CallbackReturn DiffBotSystemHardware::on_configure(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Configuring ...please wait...");
-  if (comms_.connected())
+  if (comms_motor_.connected())
   {
-    comms_.disconnect();
+    comms_motor_.disconnect();
   }
-  comms_.connect(cfg_.device, cfg_.baud_rate, cfg_.timeout_ms);
-  RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Successfully configured!");
+  if (comms_imu_.connected())
+  {
+    comms_imu_.disconnect();
+  }
 
+  comms_motor_.connect(cfg_.device_motor, cfg_.baud_rate, cfg_.timeout_ms);
+  comms_imu_.connect(cfg_.device_imu, cfg_.baud_rate, cfg_.timeout_ms, cfg_.imu_calib_timeout_ms);
+
+  RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Successfully configured!");
+  RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Calibrating IMU...please wait...");
+   comms_imu_.calibrate_imu();
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 
@@ -220,9 +240,13 @@ hardware_interface::CallbackReturn DiffBotSystemHardware::on_cleanup(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Cleaning up ...please wait...");
-  if (comms_.connected())
+  if (comms_motor_.connected())
   {
-    comms_.disconnect();
+    comms_motor_.disconnect();
+  }
+  if (comms_imu_.connected())
+  {
+    comms_imu_.disconnect();
   }
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Successfully cleaned up!");
 
@@ -234,18 +258,18 @@ hardware_interface::CallbackReturn DiffBotSystemHardware::on_activate(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Activating ...please wait...");
-  if (!comms_.connected())
+  if (!comms_motor_.connected() || !comms_imu_.connected())
   {
     return hardware_interface::CallbackReturn::ERROR;
   }
   if (cfg_.pid_p > 0)
   {
-    comms_.set_pid_values(cfg_.pid_p,cfg_.pid_d,cfg_.pid_i,cfg_.pid_o);
+    comms_motor_.set_pid_values(cfg_.pid_p,cfg_.pid_d,cfg_.pid_i,cfg_.pid_o);
   }
 
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Successfully activated!");
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Calibrating IMU...please wait...");
-  comms_.calibrate_imu();
+  // comms_imu_.calibrate_imu();
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -262,13 +286,13 @@ hardware_interface::CallbackReturn DiffBotSystemHardware::on_deactivate(
 hardware_interface::return_type DiffBotSystemHardware::read(
   const rclcpp::Time & /*time*/, const rclcpp::Duration & period)
 {
-  if (!comms_.connected())
+  if (!comms_motor_.connected() || !comms_imu_.connected())
   {
     return hardware_interface::return_type::ERROR;
   }
 
-  comms_.read_encoder_values(wheel_l_.enc, wheel_r_.enc);
-  comms_.read_imu_values(imu_.accel_x, imu_.accel_y, imu_.accel_z, imu_.gyro_x, imu_.gyro_y, imu_.gyro_z);
+  comms_motor_.read_encoder_values(wheel_l_.enc, wheel_r_.enc);
+  comms_imu_.read_imu_values(imu_.accel_x, imu_.accel_y, imu_.accel_z, imu_.gyro_x, imu_.gyro_y, imu_.gyro_z);
 
 
   double delta_seconds = period.seconds();
@@ -302,14 +326,14 @@ hardware_interface::return_type DiffBotSystemHardware::read(
 hardware_interface::return_type ros2_control_demo_example_2::DiffBotSystemHardware::write(
   const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
-  if (!comms_.connected())
+  if (!comms_motor_.connected() || !comms_imu_.connected())
   {
     return hardware_interface::return_type::ERROR;
   }
 
   int motor_l_counts_per_loop = wheel_l_.cmd / wheel_l_.rads_per_count / cfg_.loop_rate;
   int motor_r_counts_per_loop = wheel_r_.cmd / wheel_r_.rads_per_count / cfg_.loop_rate;
-  comms_.set_motor_values(motor_l_counts_per_loop, motor_r_counts_per_loop);
+  comms_motor_.set_motor_values(motor_l_counts_per_loop, motor_r_counts_per_loop);
   return hardware_interface::return_type::OK;
 }
 

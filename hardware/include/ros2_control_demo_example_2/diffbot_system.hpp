@@ -52,9 +52,11 @@ struct Config
   std::string right_wheel_name = "";
   std::string imu_name = "";
   float loop_rate = 0.0;
-  std::string device = "";
+  std::string device_motor = "";
+  std::string device_imu = "";
   int baud_rate = 0;
   int timeout_ms = 0;
+  int imu_calib_timeout_ms = 0;
   int enc_counts_per_rev = 0;
   int pid_p = 0;
   int pid_d = 0;
@@ -106,11 +108,15 @@ private:
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr imu_calibrate_srv_;
   rclcpp::Node::SharedPtr node_;
 
-  ArduinoComms comms_;
+  ArduinoComms comms_motor_;
+  ArduinoComms comms_imu_;
   Config cfg_;
   Wheel wheel_l_;
   Wheel wheel_r_;
   Imu imu_;
+
+  void imu_calibrate_callback(const std::shared_ptr<std_srvs::srv::Empty::Request> request,
+                              std::shared_ptr<std_srvs::srv::Empty::Response> response);
   
 };
 
