@@ -6,9 +6,9 @@
         "limitSymbolsToIncludedHeaders": false
       },
       "includePath": [
-        "/home/carlios/control_ws/install/ros2_control_demo_example_2/include/**",
+        "/home/carlios/control_ws/install/diffbot_control/include/**",
         "/home/carlios/dev_ws/install/sjtu_drone_description/include/**",
-        "/home/carlios/dev_ws/install/ros2_control_demo_example_2/include/**",
+        "/home/carlios/dev_ws/install/diffbot_control/include/**",
         "/opt/ros/humble/include/**",
         "/usr/include/**"
       ],

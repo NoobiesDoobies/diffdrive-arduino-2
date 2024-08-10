@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(ros2_control_demo_example_2 LANGUAGES CXX)
+project(diffbot_control LANGUAGES CXX)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)")
   add_compile_options(-Wall -Wextra)
@@ -29,41 +29,41 @@ endforeach()
 
 ## COMPILE
 add_library(
-  ros2_control_demo_example_2
+  diffbot_control
   SHARED
   hardware/diffbot_system.cpp
 )
-target_compile_features(ros2_control_demo_example_2 PUBLIC cxx_std_17)
-target_include_directories(ros2_control_demo_example_2 PUBLIC
+target_compile_features(diffbot_control PUBLIC cxx_std_17)
+target_include_directories(diffbot_control PUBLIC
 $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/hardware/include>
-$<INSTALL_INTERFACE:include/ros2_control_demo_example_2>
+$<INSTALL_INTERFACE:include/diffbot_control>
 )
 ament_target_dependencies(
-  ros2_control_demo_example_2 PUBLIC
+  diffbot_control PUBLIC
   ${THIS_PACKAGE_INCLUDE_DEPENDS}
 )
 
-target_link_libraries(ros2_control_demo_example_2 PUBLIC serial)
+target_link_libraries(diffbot_control PUBLIC serial)
 
 
 # Export hardware plugins
-pluginlib_export_plugin_description_file(hardware_interface ros2_control_demo_example_2.xml)
+pluginlib_export_plugin_description_file(hardware_interface diffbot_control.xml)
 
 # INSTALL
 install(
   DIRECTORY hardware/include/
-  DESTINATION include/ros2_control_demo_example_2
+  DESTINATION include/diffbot_control
 )
 install(
   DIRECTORY description/launch description/ros2_control description/urdf
-  DESTINATION share/ros2_control_demo_example_2
+  DESTINATION share/diffbot_control
 )
 install(
   DIRECTORY bringup/launch bringup/config
-  DESTINATION share/ros2_control_demo_example_2
+  DESTINATION share/diffbot_control
 )
-install(TARGETS ros2_control_demo_example_2
-  EXPORT export_ros2_control_demo_example_2
+install(TARGETS diffbot_control
+  EXPORT export_diffbot_control
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
@@ -78,6 +78,6 @@ if(BUILD_TESTING)
 endif()
 
 ## EXPORTS
-ament_export_targets(export_ros2_control_demo_example_2 HAS_LIBRARY_TARGET)
+ament_export_targets(export_diffbot_control HAS_LIBRARY_TARGET)
 ament_export_dependencies(${THIS_PACKAGE_INCLUDE_DEPENDS})
 ament_package()

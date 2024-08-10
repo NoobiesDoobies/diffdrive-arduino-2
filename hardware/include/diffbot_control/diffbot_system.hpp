@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ROS2_CONTROL_DEMO_EXAMPLE_2__DIFFBOT_SYSTEM_HPP_
-#define ROS2_CONTROL_DEMO_EXAMPLE_2__DIFFBOT_SYSTEM_HPP_
+#ifndef diffbot_control__DIFFBOT_SYSTEM_HPP_
+#define diffbot_control__DIFFBOT_SYSTEM_HPP_
 
 #include <memory>
 #include <string>
@@ -36,11 +36,11 @@
 #include "std_srvs/srv/empty.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 
-#include "ros2_control_demo_example_2/arduino_comms.hpp"
-#include "ros2_control_demo_example_2/wheel.hpp"
-#include "ros2_control_demo_example_2/imu.hpp"
+#include "diffbot_control/arduino_comms.hpp"
+#include "diffbot_control/wheel.hpp"
+#include "diffbot_control/imu.hpp"
 
-namespace ros2_control_demo_example_2
+namespace diffbot_control
 {
 class DiffBotSystemHardware : public hardware_interface::SystemInterface
 {
@@ -120,6 +120,6 @@ private:
   
 };
 
-}  // namespace ros2_control_demo_example_2
+}  // namespace diffbot_control
 
-#endif  // ROS2_CONTROL_DEMO_EXAMPLE_2__DIFFBOT_SYSTEM_HPP_
+#endif  // diffbot_control__DIFFBOT_SYSTEM_HPP_
